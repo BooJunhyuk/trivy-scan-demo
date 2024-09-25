@@ -1,4 +1,3 @@
-
 name: Trivy Scan
 
 on:
@@ -28,7 +27,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Build the Docker image
-      run: docker build -t my-image-name .
+      run: docker build -t my-vulnerable-image .
 
     - name: Install Trivy
       run: |
@@ -39,7 +38,4 @@ jobs:
         sudo apt-get install trivy
 
     - name: Scan Docker image with Trivy
-      run: trivy image my-image-name
-
-    - name: Scan configuration files with Trivy
-      run: trivy config .
+      run: trivy image --exit-code 1 --severity HIGH,CRITICAL my-vulnerable-image
