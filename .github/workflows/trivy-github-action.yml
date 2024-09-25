@@ -1,4 +1,4 @@
-name: Trivy Scan
+name: Trivy Scan with Slack Notification
 
 on:
   push:
@@ -15,19 +15,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-      
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v1
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    
     - name: Build the Docker image
-      run: docker build -t my-vulnerable-image .
+      run: docker build -t my-image-name .
 
     - name: Install Trivy
       run: |
@@ -38,4 +31,22 @@ jobs:
         sudo apt-get install trivy
 
     - name: Scan Docker image with Trivy
-      run: trivy image --exit-code 1 --severity HIGH,CRITICAL my-vulnerable-image
+      id: trivy_scan
+      run: trivy image --exit-code 1 --severity HIGH,CRITICAL my-image-name
+      continue-on-error: true
+
+    - name: Send Slack Notification
+      if: failure()  # Trivy 스캔이 실패했을 때만 실행
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        curl -X POST -H 'Content-type: application/json' --data '{
+          "text": "Trivy 스캔에서 취약점이 발견되었습니다. 확인이 필요합니다.",
+          "attachments": [
+            {
+              "color": "#FF0000",
+              "title": "Trivy Scan Failed",
+              "text": "취약점이 발견된 Docker 이미지: my-image-name"
+            }
+          ]
+        }' $SLACK_WEBHOOK_URL
